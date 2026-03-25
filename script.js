@@ -2,7 +2,7 @@
 // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
 
 // the link to your model provided by Teachable Machine export panel
-const URL = "./my_model/";
+const URL = "./metadata/";
 let currentFacingMode = "user"; // Começa
 //  com a frontal
 let lastUpdateTime = 0;
@@ -124,9 +124,13 @@ function getBestPrediction(prediction) {
         }
     }
 
-    let statusColor = "#2ecc71"; // Verde para "Com Máscara"
-    if (bestClass.toLowerCase().includes("no") || bestClass.toLowerCase().includes("sem")) {
-        statusColor = "#e74c3c"; // Vermelho para "Sem Máscara"
+    const normalizedClass = bestClass.toLowerCase();
+    let statusColor = "#95a5a6";
+
+    if (normalizedClass.includes("feliz") || normalizedClass.includes("happy")) {
+        statusColor = "#2ecc71";
+    } else if (normalizedClass.includes("neutro") || normalizedClass.includes("neutral")) {
+        statusColor = "#3498db";
     }
 
     return { bestClass, highestProb, statusColor };
