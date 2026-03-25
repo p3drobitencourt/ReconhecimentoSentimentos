@@ -3,7 +3,8 @@
 
 // the link to your model provided by Teachable Machine export panel
 const URL = "./my_model/";
-let currentFacingMode = "user"; // Começa com a frontal
+let currentFacingMode = "user"; // Começa
+//  com a frontal
 let lastUpdateTime = 0;
 let model, webcam, labelContainer, maxPredictions;
 
