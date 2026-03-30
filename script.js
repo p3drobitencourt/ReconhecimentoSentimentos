@@ -1,43 +1,27 @@
-// More API functions here:
-// https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
-
-// the link to your model provided by Teachable Machine export panel
 const URL = "./metadata/";
-let currentFacingMode = "user"; // Começa
-//  com a frontal
+let currentFacingMode = "user";
 let lastUpdateTime = 0;
 let loopStarted = false;
 let selectedImageElement = null;
 let model, webcam, labelContainer, maxPredictions;
 
-/**
- * Carrega o modelo e metadados
- */
 async function loadModel() {
     const modelURL = URL + "model.json";
     const metadataURL = URL + "metadata.json";
-
-    // load the model and metadata
-    // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
-    // or files from your local hard drive
-    // Note: the pose library adds "tmImage" object to your window (window.tmImage)
     model = await tmImage.load(modelURL, metadataURL);
     maxPredictions = model.getTotalClasses();
     labelContainer = document.getElementById("label-container");
 }
 
-// Load the image model and setup the webcam
 async function init() {
     await loadModel();
-
     if (webcam) {
         await webcam.stop();
     }
-
-    // Convenience function to setup a webcam
+    
     const flip = (currentFacingMode === "user");
-    webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
-    await webcam.setup({ facingMode: currentFacingMode }); // request access to the webcam
+    webcam = new tmImage.Webcam(200, 200, flip);
+    await webcam.setup({ facingMode: currentFacingMode });
     await webcam.play();
 
     if (!loopStarted) {
@@ -45,7 +29,6 @@ async function init() {
         window.requestAnimationFrame(loop);
     }
 
-    // append elements to the DOM
     const container = document.getElementById("webcam-container");
     container.innerHTML = "";
     container.appendChild(webcam.canvas);
@@ -54,21 +37,17 @@ async function init() {
     updateCameraButtons(true);
 }
 
-/**
- * Alterna entre câmera frontal e traseira
- */
 async function switchCamera() {
-    if (webcam) {
-        currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
-        await webcam.stop();
-        const flip = (currentFacingMode === "user");
-        webcam = new tmImage.Webcam(200, 200, flip);
-        await webcam.setup({ facingMode: currentFacingMode });
-        await webcam.play();
-        const container = document.getElementById("webcam-container");
-        container.innerHTML = "";
-        container.appendChild(webcam.canvas);
-    }
+    if (!webcam) return;
+    currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+    await webcam.stop();
+    const flip = (currentFacingMode === "user");
+    webcam = new tmImage.Webcam(200, 200, flip);
+    await webcam.setup({ facingMode: currentFacingMode });
+    await webcam.play();
+    const container = document.getElementById("webcam-container");
+    container.innerHTML = "";
+    container.appendChild(webcam.canvas);
 }
 
 async function stopCamera() {
@@ -76,7 +55,6 @@ async function stopCamera() {
         await webcam.stop();
         webcam = null;
     }
-
     const container = document.getElementById("webcam-container");
     container.innerHTML = "";
     updateCameraButtons(false);
@@ -85,31 +63,31 @@ async function stopCamera() {
 function updateCameraButtons(isRunning) {
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
-
     if (!startBtn || !stopBtn) return;
     startBtn.disabled = isRunning;
     stopBtn.disabled = !isRunning;
 }
 
 async function loop() {
-    if (webcam && webcam.canvas) {
-        webcam.update(); // update the webcam frame
-        await predict();
+    try {
+        if (webcam && webcam.canvas && webcam.canvas.width > 0) {
+            webcam.update();
+            await predict();
+        }
+    } catch (error) {
+        console.error("Inference loop crash prevented:", error);
+    } finally {
+        if (loopStarted) {
+            window.requestAnimationFrame(loop);
+        }
     }
-    window.requestAnimationFrame(loop);
 }
 
-/**
- * Função: Classifica a predição e exibe o resultado com cor
- * @param {Array} prediction - Array de predições do modelo
- */
 function predictClass(prediction) {
     if (!labelContainer) {
         labelContainer = document.getElementById("label-container");
     }
-
     const { bestClass, highestProb, statusColor } = getBestPrediction(prediction);
-
     labelContainer.innerHTML = renderResultCard(bestClass, highestProb, statusColor);
 }
 
@@ -145,24 +123,16 @@ function renderResultCard(bestClass, highestProb, statusColor) {
         </div>`;
 }
 
-// run the webcam image through the image model
 async function predict() {
-    // predict can take in an image, video or canvas html element
-    if (!model || !webcam) return;
-    
+    if (!model || !webcam || !webcam.canvas) return;
     const now = Date.now();
-    const prediction = await model.predict(webcam.canvas);
+    
+    // Throttling movido para evitar sobrecarga do processo de inferência
     if (now - lastUpdateTime > 1000) {
+        const prediction = await model.predict(webcam.canvas);
         predictClass(prediction);
-        lastUpdateTime = now; // Atualiza o marcador de tempo
+        lastUpdateTime = now; 
     }
-}
-
-/**
- * Função: Processa arquivo de imagem selecionado
- */
-async function predictFromFile() {
-    await verifySelectedFile();
 }
 
 function handleFileSelection() {
@@ -210,16 +180,11 @@ async function verifySelectedFile() {
     await runStaticPrediction(selectedImageElement, true);
 }
 
-/**
- * Função: Executa a predição em um elemento de imagem estático
- * @param {HTMLImageElement} imgElement 
- */
 async function runStaticPrediction(imgElement, showInFileResult = false) {
     if (model == null) 
         await loadModel();
      
     const prediction = await model.predict(imgElement);
-    predictClass(prediction);
 
     if (showInFileResult) {
         const { bestClass, highestProb, statusColor } = getBestPrediction(prediction);
